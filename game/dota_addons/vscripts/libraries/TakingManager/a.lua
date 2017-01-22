@@ -1,5 +1,186 @@
 
 
+entity['taking'] = {
+	['depo'] = {},
+	['node'] = {},
+	['searchRadius'] = {
+		['node'] = 2500,
+		['depo'] = 2500
+	}
+}
+
+function TakingManager:EntityReturnToDepo(entity)
+	if TakingManager:DepoIsViable(entity['taking']['depo']) then
+		if entity['taking']['depo'] and not entity['taking']['depo']:IsNull() then
+		else
+		end
+	else
+		local tDepo = TakingManager:EntityLocateNewDepo(entity)
+		if tDepo then
+		else
+			TakingManager:EntityCannotFindNearbyDepo(entity)
+		end
+	end
+
+	return
+end
+
+function TakingManager:EntityLocateNewDepo(entity)
+	EntityManager:EntityUpdateVector(entity)
+
+	local oldDepo = entity['taking']['depo']
+	entity['taking']['depo'] = nil
+
+	if oldDepo and oldDepo['name'] then
+		local depos = Entities:FindAllByClassnameWithin(oldDepo['name'], entity['vector'], entity['taking']['searchRadius']['depo'])
+		if depos and #depos > 0 then
+			local nearest = {
+				['distance'] = 9999999999999999999999999999999999999999999999999999999999999999999999999999
+			}
+
+			for i=0, #depos do
+				if depos[i] then
+					local depo = depos[i]
+					local distance = GridNav:FindPathLength(entity['vector'], depo['origin'])
+					
+					if distance < nearest['distance'] and GridNav:CanFindPath(entity['vector'], depo['origin']) then
+						nearest['distance'] = distance
+						nearest['depo'] = depo
+					end
+				end
+			end
+
+			return nearest['depo'] or nil
+		end
+	else
+		return nil
+	end
+end
+
+function TakingManager:EntityCannotFindNearbyDepo(entity)
+	entity:CastAbilityOnTarget(entity, entity['abilities']['taking_sleep'], entity['id'])	
+end
+
+function OnTakingSucceeded(data)
+	-- Finished taking X resources
+		-- Add node value to pack contents
+		-- CHECK if pack is at capacity
+			-- If so CHECK if depo is still alive
+				-- If so return to depo
+					-- Deposit Contents
+					-- CHECK if resource node is viable
+						-- If so cast taking ability on node
+						-- If NOT run EntityLocateNewNode on entity
+							-- If so cast taking ability on node
+							-- If NOT SLEEP
+				-- If NOT search for another nearby depo (within max range)
+					-- If SO return to depo
+						-- Deposit Contents
+						-- CHECK if resource node is viable
+							-- If so cast taking ability on node
+							-- If NOT run EntityLocateNewNode on entity
+								-- If so cast taking ability on node
+								-- If NOT SLEEP
+					-- If NOT SLEEP
+	local entity = data['caster']
+	local node = data['target']
+
+	-- Get node value and add it to pack contents
+	TakingManager:PackAddResource(entity, TakingManager:ResourceGetValue(node))
+
+	if TakingManager:PackIsFull(entity) then
+		TakingManager:EntityReturnToDepo(entity)
+	else
+		TakingManager:EntityReturnToNode(entity, node)
+	end
+
+	return
+end
+
+function TakingManager:PackAddResource(entity, resource)
+	entity['pack']['amount'] = entity['pack']['amount'] + resource['value']
+
+	return
+end
+
+function TakingManager:ResourceGetValue(node)
+	return {['name'] = node['name'], ['value'] = node['value']}
+end
+
+function TakingManager:PackIsFull(entity)
+	if entity['pack']['amount'] >= entity['pack']['capacity'] then
+		return true
+	else
+		return false
+	end
+end
+
+function TakingManager:EntityReturnToDepo(entity)
+end
+
+function TakingManager:EntityReturnToNode(entity, node)
+	if TakingManager:NodeIsViable(node) then
+		TakingManager:EntityTakeNode(entity, node)
+	else
+		tNode = TakingManager:EntityLocateNewNode(entity)
+		if tNode then
+			TakingManager:EntityTakeNode(entity, tNode)
+		else
+			TakingManager:EntityCannotFindNearbyNode(entity)
+		end
+	end
+
+	return
+end
+
+function TakingManager:NodeIsViable(node)
+	if node and not node:IsNull() then
+		return true
+	else
+		return false
+	end
+end
+
+function TakingManager:EntityTakeNode(entity, node)
+	entity['taking']['node'] = node
+	entity:CastAbilityOnTarget(node, entity['abilities']['resource_taking'], entity['id'])
+return
+
+function TakingManager:EntityLocateNewNode(entity)
+	EntityManager:EntityUpdateVector(entity)
+
+	local oldNode = entity['taking']['node']
+	entity['taking']['node'] = nil
+
+	if oldNode and oldNode['name'] then
+		local nodes = Entities:FindAllByClassnameWithin(oldNode['name'], entity['vector'], entity['taking']['searchRadius']['node'])
+		if nodes and #nodes > 0 then
+			local nearest = {
+				['distance'] = 999999999999999999999999999999999999999999999999999999999999999999999999
+			}
+
+			for i = 0, #nodes do
+				if nodes[i] then
+					local node = nodes[i]
+					local distance = GridNav:FindPathLength(entity['vector'], node['origin'])
+
+					if distance < nearest['distance'] and GridNav:CanFindPath(entity['vector'], node['origin']) then
+						nearest['distance'] = distance
+						nearest['node'] = node
+					end
+				end
+			end
+
+			return nearest['node'] or nil
+		end
+	else
+		return nil
+	end
+end
+
+function TakingManager:EntityCannotFindNearbyNode(entity)
+	entity:CastAbilityOnTarget(entity, entity['abilities']['taking_sleep'], entity['id'])
+end
 
 
 --[[
@@ -19,7 +200,8 @@ function OnTakingSucceeded(data)
 
 	TakingManager:ResourceAddToEntityPack(entity, TakingManager:ResourceGetAmountTaken(resource))
 
-	if TakingManager:EntityCheckCarryCapacity(entity) then
+	if TakingManager:PackIsAtCapacity(entity) then
+		local depo = 
 		entity:CastAbilityOnTarget(TakingManager:DepoGetEntity(entity), entity['abilities']['resource_deposit'], entity['id'])
 	else
 		local node = TakingManager:ResourceNodeLocate(entity)
@@ -33,6 +215,28 @@ function OnTakingSucceeded(data)
 	return
 end
 
+
+--[[
+	Functions below here are all for the most basic method of taking.
+]]--
+function TakingManager:ResourceAddToEntityPack(entity, amount)
+	entity['pack']['current'] = entity['pack']['current'] + amount
+
+	return
+end
+
+function TakingManager:ResourceGetAmountTaken(resource)
+	return resource['value']
+end
+
+function TakingManager:PackIsAtCapacity(entity)
+	if entity['pack']['current'] >= entity['pack']['capacity'] then
+		return true
+	else
+		return false
+	end
+end
+
 function TakingManager:DepoGetEntity(entity)
 	local depo = entity['depo'] or nil
 	if depo and not depo:IsNull() then
@@ -42,24 +246,26 @@ function TakingManager:DepoGetEntity(entity)
 	end
 end
 
-
-
-
-
---[[
-	Functions below here are all for the most basic methods of taking.
-]]--
-function TakingManager:ResourceGetAmountTaken(resource)
-	return resource['takingValue']
+function TakingManager:ResourceNodeLocate(entity)
+	if entity['node'] and not entity['node']:IsNull() then
+		return entity['node']
+	else
+		return nil
+	end
 end
 
-function TakingManager:ResourceAddToEntityPack(entity, amount)
-	entity['pack'] = entity['pack'] + amount
+function TakingManager:EntityFailedToFindNodeAI(entity)
+	local depo = TakingManager:DepoGetEntity(entity)
+	if depo then
+		entity:CastAbilityOnTarget(depo, entity['abilities']['depo_find_new_node'], entity['id'])
 
-	return true
+		return
+	else
+		entity:CastAbilityOnTarget(entity, entity['abilities']['self_sleep'], entity['id'])
+
+		return
+	end
 end
-
-
 
 
 --[[------------------------------------------------------------------------------
