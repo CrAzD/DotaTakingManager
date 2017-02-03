@@ -9,38 +9,22 @@ end
 local manager = TakingManager
 
 -- Information about the library
-manager['version'] = 0.02
+manager['version'] = 0.03
 manager['url'] = 'https://github.com/CrAzD/DotaTakingManager'
 manager['description'] = ''
 
 -- General setup and configuration
 manager['entity'] = GameRules:GetGameModeEntity()
-manager['users'] = {}
-manager['players'] = {}
 
 -- KV file loading and initialization
 manager['kv'] = {
-    ['abilities'] = LoadKeyValues('scripts/npc/npc_abilities_custom.txt'),
-    ['heroes'] = LoadKeyValues('scripts/npc/npc_heroes_custom.txt'),
-    ['units'] = LoadKeyValues('scripts/npc/npc_units_custom.txt'),
-    ['entities'] = {}
+    ['nodes'] = LoadKeyValues('scripts/kv/tm_nodes.kv') or {}
 }
-local kvTables = {['units'] = 'units', ['heroes'] = 'heroes'}
-for _, kvTable in pairs(kvTables) do
-    for key, value in pairs(manager['kv'][kvTable]) do
-        manager['kv']['entities'][key] = value or nil
-    end
-end
+
+manager['setup'] = {}
 
 -- Messages and info spam
-print('\n\nEntityManager:  Initialization complete...'..
+print('\nTakingManager:  Initialization complete...'..
     '\n\tVersion:  '..tostring(manager['version'])..
-    '\n\tURL:  '..manager['url']..
-    '\n\tDescription:  '..manager['description']..
-    '\n'
+    '\n\tURL:  '..manager['url']
 )
-
-
-
-manager['animations']['taking'][node['type']]
-    --tree/gold == ACT_DOTA_ATTACK
