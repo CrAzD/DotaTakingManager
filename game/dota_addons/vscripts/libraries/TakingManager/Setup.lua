@@ -1,15 +1,10 @@
 
 
 require('libraries/TakingManager/Manager')
-if TakingManager == nil then
-    _G.TakingManager = TakingManagerInitialization(class({}))
-else
-    _G.TakingManager = TakingManagerInitialization(TakingManager)
-end
-local manager = TakingManager
+local manager = TakingManagerInitialization(class({}))
 
 -- Information about the library
-manager['version'] = 0.03
+manager['version'] = 0.04
 manager['url'] = 'https://github.com/CrAzD/DotaTakingManager'
 manager['description'] = ''
 
@@ -21,10 +16,18 @@ manager['kv'] = {
     ['nodes'] = LoadKeyValues('scripts/kv/tm_nodes.kv') or {}
 }
 
-manager['setup'] = {}
+-- Check if EM has been iniltialized
+    -- If so check if TM has been iniltialized
+        -- If not iniltialize
+if EntityManager and EntityManager['initialized'] and not manager['initialized'] then
+    manager['setup'] = {}
+    manager.StartUp()
+end
 
 -- Messages and info spam
 print('\nTakingManager:  Initialization complete...'..
     '\n\tVersion:  '..tostring(manager['version'])..
     '\n\tURL:  '..manager['url']
 )
+
+return(manager)
