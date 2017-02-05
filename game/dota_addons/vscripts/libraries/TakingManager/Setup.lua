@@ -4,7 +4,7 @@ require('libraries/TakingManager/Manager')
 local manager = TakingManagerInitialization(class({}))
 
 -- Information about the library
-manager['version'] = 0.04
+manager['version'] = 0.05
 manager['url'] = 'https://github.com/CrAzD/DotaTakingManager'
 manager['description'] = ''
 

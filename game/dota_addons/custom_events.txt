@@ -36,4 +36,8 @@
 	{
 		"name"			"long"
 	}
+	"tm_ai_idle"
+	{
+		"index"			"short"
+	}
 }

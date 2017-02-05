@@ -1,0 +1,95 @@
+
+	//==================================================================================================================================
+	// USAGE:
+	//	 classname: 
+	//		THE classname or baseclass or override_hero OF the "entityname" you will be injecting node into.
+	//		The library will compile a table of entities based off of "classname".
+	//			It will then parse through that table searching for "entityname".
+	//			"classname" and "entityname" CAN be the same.
+	//			It will only inject node into entities if their name matches "entityname"
+	//
+	// 	entityname:
+	//		THE real name of the entity to inject node into.
+	//		CAN be the same as classname (IE: ent_dota_tree)
+	//
+	//
+	//		EXAMPLES:
+	//		"ent_dota_tree"
+	//		{
+	//			"ent_dota_tree"
+	//			{
+	//				"type"							"node"
+	//				"configureOnStartup"			true
+	//				"modeifier"
+	//				{
+	//					"modifier_has_lumber"		true
+	//				}
+	//				"value"
+	//				{
+	//					"lumber"					1
+	//				}
+	//			}
+	//		}
+	//		"npc_dota_building"
+	//		{
+	//			"titan_gold_mound"
+	//			{
+	//				"type"							"node"
+	//				"configureOnStartup"			true
+	//				"modifier"
+	//				{
+	//					"modifier_has_lumber"		true
+	//				}
+	//				"value"
+	//				{
+	//					"gold"						5
+	//				}
+	//			}
+	//		}
+	//
+	//==================================================================================================================================
+
+
+"tm_nodes"
+{
+	//============================
+	// TREE
+	//============================
+	"ent_dota_tree"
+	{
+		"ent_dota_tree"
+		{
+			"type"							"node"
+			"configureOnStartup"			true
+			"modifier"
+			{
+				"modifier_has_lumber"		true
+			}
+			"value"
+			{
+				"lumber"					1
+			}
+		}
+
+	}
+
+	//============================
+	// GOLD
+	//============================
+	"npc_dota_building"
+	{
+		"titan_gold_mound"
+		{
+			"type"							"node"
+			"configureOnStartup"			true
+			"modifier"
+			{
+				"modifier_has_lumber"		true
+			}
+			"value"
+			{
+				"gold"						5
+			}
+		}
+	}
+}

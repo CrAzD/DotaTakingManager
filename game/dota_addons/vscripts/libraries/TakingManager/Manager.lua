@@ -12,7 +12,10 @@ function TakingManagerInitialization(manager)
         function entity.TakingSpellStart(data)
             local node = data['target']
 
-            if entity.PackCheckCapacity() then
+            if not entity['nodes'][node['entityname']] then
+                entity.AI_Idle()
+                return
+            elseif entity.PackCheckCapacity() then
                 if entity.DepoIsViable(entity['depo']) then
                     entity.AI_TakingDeposit()
                     return
@@ -110,7 +113,7 @@ function TakingManagerInitialization(manager)
                     end
                 end
 
-                if entity['nodes'][node['classname']] then
+                if entity['nodes'][node['entityname']] then
                     entity['node'] = node
                     return true
                 end
@@ -197,18 +200,22 @@ function TakingManagerInitialization(manager)
 
         function entity.PackAdd(node)
             for resource, amount in pairs(node['value']) do
-                if (entity['pack'][resource] + amount) > entity['capacity'][resource] then
-                    amount = (amount + entity['pack'][resource]) - entity['capacity'][resource]
+                if entity['pack'][resource] then
+                    if (entity['pack'][resource] + amount) > entity['capacity'][resource] then
+                        amount = (amount + entity['pack'][resource]) - entity['capacity'][resource]
+                    end
+
+                    if (entity['pack']['total'] + amount ) > entity['capacity']['total'] then
+                        amount = (amount + entity['pack']['total']) - entity['capacity']['total']
+                    end
+
+                    entity['pack'][resource] = entity['pack'][resource] + amount
+                    entity['pack']['total'] = entity['pack']['total'] + amount
+
+                    for modifier, bool in pairs((entity['modifier'] or {})) do
+                        entity:SetModifierStackCount(modifier, entity, amount)
+                    end
                 end
-
-                if (entity['pack']['total'] + amount ) > entity['capacity']['total'] then
-                    amount = (amount + entity['pack']['total']) - entity['capacity']['total']
-                end
-
-                entity['pack'][resource] = entity['pack'][resource] + amount
-                entity['pack']['total'] = entity['pack']['total'] + amount
-
-                entity:SetModifierStackCount(node['modifier'], entity, entity['pack'][resource])
             end
             return
         end
@@ -231,19 +238,8 @@ function TakingManagerInitialization(manager)
                 for resource, amount in pairs((entity['pack'] or {})) do
                     if resource ~= 'total' then
                         player[resource] = player[resource] + amount
-                        entity.Popup(resource, amount, player[resource])
 
-                        --[[
-                        CustomGameEventManager:Send_ServerToPlayer(
-                            player, 
-                            'taking_resource_changed', 
-                            {
-                                ['player'] = player, 
-                                ['entity'] = entity, 
-                                ['resource'] = entity['pack'][resource]
-                            }
-                        )
-                        ]]
+                        entity.PackPopup(amount, resource)
                         entity['pack'][resource] = 0
                     end
                 end
@@ -253,14 +249,28 @@ function TakingManagerInitialization(manager)
             return false
         end
 
-        function entity.Popup(resource, amount, total)
-            print(resource, amount, total)
+        function entity.PackPopup(amount, resource)
+            local color = manager['colors'][resource] or manager['colors']['default'] or Vector(255, 255, 255)
+
+            local particle = ParticleManager:CreateParticleForPlayer(
+                'particles/msg_fx/msg_damage_numbers_outgoing.vpcf',
+                PATTACH_ABSORIGIN,
+                entity['depo'] or entity,
+                entity['owningPlayer']
+            )
+
+            ParticleManager:SetParticleControl(particle, 1, Vector(0, amount, nil))
+            ParticleManager:SetParticleControl(particle, 2, Vector(4.0, (#tostring(amount)+1), 0))
+            ParticleManager:SetParticleControl(particle, 3, color)
+            return
         end
 
         function entity.AI_Idle()
             entity:Stop()
             entity:SetVelocity(Vector(0, 0, 0))
             entity:StartGesture((entity['animation']['ai_idle'] or entity['animation']['default']))
+
+            FireGameEventLocal('tm_ai_idle', entity['index'])
             return
         end
 
@@ -286,6 +296,12 @@ function TakingManagerInitialization(manager)
                         entity[kkey] = entity.AbilityAdd(vvalue) or nil
                     end
                 end
+            elseif key == 'modifier' then
+                for modifier, bool in pairs(setup['modifier']) do
+                    if not entity:HasModifier(modifier) then
+                        entity:AddNewModifier(entity, nil, modifier, {})
+                    end
+                end
             elseif type(value) == 'table' then
                 entity[key] = {}
                 for kkey, vvalue in pairs(value) do
@@ -303,12 +319,17 @@ function TakingManagerInitialization(manager)
     end
 
 
+
     --[[
         manager NODE
     ]]--
     function manager.Node(node)
         node['classname'] = node:GetClassname() or node:GetDebugName() or ''
         node['index'] = node:GetEntityIndex() or nil
+
+        if node['classname'] ~= 'ent_dota_tree' then
+            node['classname'] = node:GetUnitName() or ''
+        end
 
         local setup = manager['setup'][node['classname']] or {}
         for key, value in pairs(setup) do
@@ -320,6 +341,7 @@ function TakingManagerInitialization(manager)
         FireGameEventLocal('tm_node_configured', {['index'] = node['index']})
         return(node)
     end
+
 
 
     --[[
@@ -350,6 +372,11 @@ function TakingManagerInitialization(manager)
         return(depo)
     end
 
+
+
+    --[[
+        Manager FUNCTIONS
+    ]]--
     function manager.ToBoolean(variable)
         variable = string.lower(tostring(variable))
 
@@ -382,6 +409,24 @@ function TakingManagerInitialization(manager)
     function manager.StartUp()
         manager['setup'] = manager['setup'] or {}
 
+        for classname, classdata in pairs((manager['kv']['nodes'] or {})) do
+            for entityname, entitydata in pairs(classdata) do
+                manager['setup'][entityname] = {['classname'] = classname, ['entityname'] = entityname}
+                local setup = manager['setup'][entityname]
+
+                for key, value in pairs(entitydata) do
+                    if type(value) == 'table' then
+                        setup[key] = {}
+                        for key1, value1 in pairs(value) do
+                            setup[key][key1] = manager.ToCorrectType(value1)
+                        end
+                    else
+                        setup[key] = manager.ToCorrectType(value)
+                    end
+                end
+            end
+        end
+
         for entityName, entityData in pairs(EntityManager['kv']['entities']) do
             if entityData['Taking'] or entityData['taking'] then
                 manager['setup'][entityName] = {}
@@ -391,6 +436,13 @@ function TakingManagerInitialization(manager)
                         setup[key] = {}
                         for key1, value1 in pairs(value) do
                             setup[key][key1] = manager.ToCorrectType(value1)
+
+                            if key == 'nodes' and manager['setup'][value1] then
+                                setup['modifier'] = setup['modifier'] or {}
+                                for modifier, bool in pairs((manager['setup'][value1]['modifier'] or {})) do
+                                    setup['modifier'][modifier] = bool
+                                end
+                            end
                         end
                     else
                         setup[key] = manager.ToCorrectType(value)
@@ -407,22 +459,6 @@ function TakingManagerInitialization(manager)
                 end
             end
         end
-
-        for className, data in pairs((manager['kv']['nodes'] or {})) do
-            manager['setup'][className] = {}
-            local setup = manager['setup'][className]
-            for key, value in pairs(data) do
-                if type(value) == 'table' then
-                    setup[key] = {}
-                    for key1, value1 in pairs(value) do
-                        setup[key][key1] = manager.ToCorrectType(value1)
-                    end
-                else
-                    setup[key] = manager.ToCorrectType(value)
-                end
-            end
-        end
-
         manager['initialized'] = true
     end
 
@@ -436,29 +472,34 @@ function TakingManagerInitialization(manager)
     local function EventEntityConfigured(args)
         local entity = EntityManager['indexed'][args['index']]
         local setup = manager['setup'][entity['name']] or {}
-        if setup['type'] then
-            if setup['type'] == 'taker' then
-                manager.Taker(entity)
-            elseif setup['type'] == 'depo' then
-                manager.Depo(entity)
-            elseif setup['type'] == 'node' then
-                manager.Node(entity)
-            end
+
+        if setup['value'] then
+            manager.Node(entity)
+        elseif (setup['type'] or '') == 'taker' then
+            manager.Taker(entity)
+        elseif (setup['type'] or '') == 'depo' then
+            manager.Depo(entity)
         end
     end
 
     local function EventGameStateChange(args)
-        if GameRules:State_Get() ~=  DOTA_GAMERULES_STATE_CUSTOM_GAME_SETUP  then
+        if GameRules:State_Get() ~= DOTA_GAMERULES_STATE_CUSTOM_GAME_SETUP then
             return
         else
-            for className, data in pairs((manager['kv']['nodes'] or {})) do
-                local setup = manager['setup'][className]
-                if setup['configureOnStartup'] then
-                    local nodes = Entities:FindAllByClassname(className)
-                    for i=0, #nodes+1 do
-                        local node = nodes[i] or nil
-                        if node then
-                            manager.Node(node)
+            for classname, classdata in pairs((manager['kv']['nodes'] or {})) do
+                for entityname, entitydata in pairs(classdata) do
+                    local setup = manager['setup'][entityname] or {}
+                    if setup['configureOnStartup'] then
+                        local nodes = Entities:FindAllByClassname(classname)
+                        for i=0, #nodes+1 do
+                            local node = nodes[i] or nil
+                            if node then
+                                if classname == entityname then
+                                    manager.Node(node)
+                                elseif entityname == (node['name'] or '') then
+                                    manager.Node(node)
+                                end
+                            end
                         end
                     end
                 end
@@ -469,6 +510,18 @@ function TakingManagerInitialization(manager)
     ListenToGameEvent('game_rules_state_change', EventGameStateChange, self)
     ListenToGameEvent('em_player_configured', EventPlayerConfigured, self)
     ListenToGameEvent('em_entity_configured', EventEntityConfigured, self)
+
+
+
+    --[[
+        Manager Configuraton
+    ]]--
+    manager['colors'] = {
+        ['default'] = Vector(0, 0 ,0),
+        ['lumber'] = Vector(10, 200, 90),
+        ['gold'] = Vector(225, 225, 100)
+    }
+
 
 
     --[[
