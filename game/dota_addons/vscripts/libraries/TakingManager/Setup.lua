@@ -4,7 +4,7 @@ require('libraries/TakingManager/Manager')
 local manager = TakingManagerInitialization(class({}))
 
 -- Information about the library
-manager['version'] = 0.05
+manager['version'] = 0.06
 manager['url'] = 'https://github.com/CrAzD/DotaTakingManager'
 manager['description'] = ''
 
@@ -13,7 +13,8 @@ manager['entity'] = GameRules:GetGameModeEntity()
 
 -- KV file loading and initialization
 manager['kv'] = {
-    ['nodes'] = LoadKeyValues('scripts/kv/tm_nodes.kv') or {}
+    ['nodes'] = LoadKeyValues('scripts/kv/tm_nodes.kv') or {},
+    ['takers'] = LoadKeyValues('scripts/kv/tm_takers.kv') or {}
 }
 
 -- Check if EM has been iniltialized
@@ -31,3 +32,6 @@ print('\nTakingManager:  Initialization complete...'..
 )
 
 return(manager)
+
+
+--GridNav:GetAllTreesAroundPoint()

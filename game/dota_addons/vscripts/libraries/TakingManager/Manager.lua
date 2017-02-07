@@ -12,10 +12,7 @@ function TakingManagerInitialization(manager)
         function entity.TakingSpellStart(data)
             local node = data['target']
 
-            if not entity['nodes'][node['entityname']] then
-                entity.AI_Idle()
-                return
-            elseif entity.PackCheckCapacity() then
+            if entity.PackCheckCapacity() then
                 if entity.DepoIsViable(entity['depo']) then
                     entity.AI_TakingDeposit()
                     return
@@ -29,7 +26,7 @@ function TakingManagerInitialization(manager)
                     end
                 end
             elseif entity.NodeIsViable(node) then
-                entity:StartGesture((entity['animation'][node['name']] or entity['animation']['default'] ))
+                entity:StartGesture((entity['animation'][node['name']] or entity['animation']['default']))
                 return
             else
                 if entity.NodeGetViable() then
@@ -83,7 +80,10 @@ function TakingManagerInitialization(manager)
             entity.LocationRefresh()
 
             if nodeOld then
-                node = Entities:FindByClassnameNearest(nodeOld['classname'], entity['location'], (entity['searchRadius']['all'] or entity['searchRadius'][entity['node']['type']]))
+                node = Entities:FindByClassnameNearest(nodeOld['classname'], nodeOld['origin'], (entity['searchRadius']['all'] or entity['searchRadius'][entity['node']['type']]))
+                if not node then
+                    node = Entities:FindByClassnameNearest(nodeOld['classname'], entity['location'], (entity['searchRadius']['all'] or entity['searchRadius'][entity['node']['type']]))
+                end
             else
                 for classname, _ in pairs((entity['nodes'] or {})) do
                     node = Entities:FindByClassnameNearest(classname, entity['location'], (entity['searchRadius']['all'] or entity['searchRadius'][entity['node']['type']]))
@@ -324,14 +324,15 @@ function TakingManagerInitialization(manager)
         manager NODE
     ]]--
     function manager.Node(node)
-        node['classname'] = node:GetClassname() or node:GetDebugName() or ''
-        node['index'] = node:GetEntityIndex() or nil
-
-        if node['classname'] ~= 'ent_dota_tree' then
-            node['classname'] = node:GetUnitName() or ''
+        if not node['entityname'] then
+            return
         end
 
-        local setup = manager['setup'][node['classname']] or {}
+        node['classname'] = node['classname'] or node:GetClassname() or node:GetDebugName() or ''
+        node['index'] = node:GetEntityIndex() or nil
+        node['location'] = node:GetAbsOrigin()
+
+        local setup = manager['setup'][node['entityname']] or {}
         for key, value in pairs(setup) do
             node[key] = value or nil
         end
@@ -411,7 +412,7 @@ function TakingManagerInitialization(manager)
 
         for classname, classdata in pairs((manager['kv']['nodes'] or {})) do
             for entityname, entitydata in pairs(classdata) do
-                manager['setup'][entityname] = {['classname'] = classname, ['entityname'] = entityname}
+                manager['setup'][entityname] = {['classname'] = classname, ['entityname'] = entityname, ['name'] = entityname}
                 local setup = manager['setup'][entityname]
 
                 for key, value in pairs(entitydata) do
@@ -427,7 +428,7 @@ function TakingManagerInitialization(manager)
             end
         end
 
-        for entityName, entityData in pairs(EntityManager['kv']['entities']) do
+        for entityName, entityData in pairs(EntityManager['kv']['entities'] and pairs(manager['kv']['entities'])) do
             if entityData['Taking'] or entityData['taking'] then
                 manager['setup'][entityName] = {}
                 local setup = manager['setup'][entityName]
@@ -461,6 +462,7 @@ function TakingManagerInitialization(manager)
         end
         manager['initialized'] = true
     end
+
 
 
     --[[
@@ -522,11 +524,7 @@ function TakingManagerInitialization(manager)
         ['gold'] = Vector(225, 225, 100)
     }
 
-
-
-    --[[
-        Final touch(s), return manager
-    ]]--
+    --Final touch(s), return manager
     FireGameEventLocal('tm_manager_configured', {['name'] = 'TakingManager'})
     return(manager)
 end
@@ -561,20 +559,4 @@ function DepositOnChannelSucceeded(data)
     else
         return
     end
-end
-
-function TrainPeasentChannelSucceeded(data)
-    local caster = data['caster']
-    local entityData = {
-        ['name'] = 'peasant',
-        ['origin'] = caster.LocationRefresh(),
-        ['owningEntity'] = caster,
-        ['owningPlayer'] = caster['owningPlayer'],
-        ['team'] = caster['team'],
-        ['type'] = 'unit',
-        ['depo'] = caster,
-        ['id'] = caster['id']
-    }
-    local entity = EntityManager.EntityCreate(entityData, entity['owningPlayer'])
-    FindClearSpaceForUnit(entity, entity['origin'], true)
 end

@@ -2,31 +2,48 @@
 	//==================================================================================================================================
 	// USAGE:
 	//	 classname: 
-	//		THE classname or baseclass or override_hero OF the "entityname" you will be injecting node into.
+	//		THE classname or baseclass or override_hero OF the entity you will be injecting node into.
 	//		The library will compile a table of entities based off of "classname".
 	//			It will then parse through that table searching for "entityname".
 	//			"classname" and "entityname" CAN be the same.
 	//			It will only inject node into entities if their name matches "entityname"
 	//
 	// 	entityname:
-	//		THE real name of the entity to inject node into.
+	//		THE *real* name of the entity to inject node into.
 	//		CAN be the same as classname (IE: ent_dota_tree)
+	//
+	//	type:
+	//		Valid Options: depo, node, taker
+	//		Node will allow Takers (if they have the entityname in their nodes table) to take from the node-entity.
+	//
+	//	configureOnStartup:
+	//		Valid Options: true or false
+	//			TRUE: Library will search for every entity that exists, at the start of the game, to inject node into.
+	//			FALSE: Library will only inject node when an entity spawns.
+	//
+	//	value:
+	//		How much of a resource to give the taker for every taking-event.
+	//		CAN be as many or as few as you want.
+	//
+	//	modifier:
+	//		Modifiers to apply to entities when they take from this node.
+	//		CAN be left empty to disable.
 	//
 	//
 	//		EXAMPLES:
-	//		"ent_dota_tree"
+	//		"classname"
 	//		{
-	//			"ent_dota_tree"
+	//			"entityname"
 	//			{
-	//				"type"							"node"
+	//				"type"							node
 	//				"configureOnStartup"			true
-	//				"modeifier"
-	//				{
-	//					"modifier_has_lumber"		true
-	//				}
 	//				"value"
 	//				{
-	//					"lumber"					1
+	//					"resourceName"				1
+	//				}
+	//				"modeifier"
+	//				{
+	//					"modifier_name"				true
 	//				}
 	//			}
 	//		}
@@ -34,15 +51,14 @@
 	//		{
 	//			"titan_gold_mound"
 	//			{
-	//				"type"							"node"
+	//				"type"							node
 	//				"configureOnStartup"			true
-	//				"modifier"
-	//				{
-	//					"modifier_has_lumber"		true
-	//				}
 	//				"value"
 	//				{
 	//					"gold"						5
+	//				}
+	//				"modifier"
+	//				{
 	//				}
 	//			}
 	//		}
@@ -53,21 +69,21 @@
 "tm_nodes"
 {
 	//============================
-	// TREE
+	// LUMBER
 	//============================
 	"ent_dota_tree"
 	{
 		"ent_dota_tree"
 		{
-			"type"							"node"
+			"type"							node
 			"configureOnStartup"			true
-			"modifier"
-			{
-				"modifier_has_lumber"		true
-			}
 			"value"
 			{
 				"lumber"					1
+			}
+			"modifier"
+			{
+				"modifier_has_lumber"		true
 			}
 		}
 
@@ -80,15 +96,15 @@
 	{
 		"titan_gold_mound"
 		{
-			"type"							"node"
+			"type"							node
 			"configureOnStartup"			true
-			"modifier"
-			{
-				"modifier_has_lumber"		true
-			}
 			"value"
 			{
 				"gold"						5
+			}
+			"modifier"
+			{
+				"modifier_has_lumber"		true
 			}
 		}
 	}
