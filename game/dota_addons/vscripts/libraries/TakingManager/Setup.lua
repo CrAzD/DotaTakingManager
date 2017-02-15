@@ -4,11 +4,12 @@ require('libraries/TakingManager/Manager')
 local manager = TakingManagerInitialization(class({}))
 
 -- Information about the library
-manager['version'] = 0.06
+manager['version'] = 0.07
 manager['url'] = 'https://github.com/CrAzD/DotaTakingManager'
 manager['description'] = ''
 
 -- General setup and configuration
+manager['indexed'] = {}
 manager['entity'] = GameRules:GetGameModeEntity()
 
 -- KV file loading and initialization

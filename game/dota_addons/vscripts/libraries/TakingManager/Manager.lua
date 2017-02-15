@@ -79,14 +79,14 @@ function TakingManagerInitialization(manager)
 
             entity.LocationRefresh()
 
-            if nodeOld then
-                node = Entities:FindByClassnameNearest(nodeOld['classname'], nodeOld['origin'], (entity['searchRadius']['all'] or entity['searchRadius'][entity['node']['type']]))
+            if nodeOld and nodeOld['className'] then
+                node = Entities:FindByClassnameNearest(nodeOld['className'], nodeOld['origin'], (entity['ai_radius']['all'] or entity['ai_radius'][nodeOld['className']] or 0))
                 if not node then
-                    node = Entities:FindByClassnameNearest(nodeOld['classname'], entity['location'], (entity['searchRadius']['all'] or entity['searchRadius'][entity['node']['type']]))
+                    node = Entities:FindByClassnameNearest(nodeOld['className'], entity['location'], (entity['ai_radius']['all'] or entity['ai_radius'][nodeOld['className']] or 0))
                 end
             else
-                for classname, _ in pairs((entity['nodes'] or {})) do
-                    node = Entities:FindByClassnameNearest(classname, entity['location'], (entity['searchRadius']['all'] or entity['searchRadius'][entity['node']['type']]))
+                for className, _ in pairs((entity['nodes'] or {})) do
+                    node = Entities:FindByClassnameNearest(className, entity['location'], (entity['ai_radius']['all'] or entity['ai_radius'][className] or 0))
                     if node then
                         break
                     end
@@ -113,7 +113,7 @@ function TakingManagerInitialization(manager)
                     end
                 end
 
-                if entity['nodes'][node['entityname']] then
+                if entity['nodes'][node['entityName']] then
                     entity['node'] = node
                     return true
                 end
@@ -158,59 +158,75 @@ function TakingManagerInitialization(manager)
         end
 
         function entity.DepoGetViable()
-            entity.LocationRefresh()
+            if entity['depos']['self'] then
+                entity['depo'] = entity
+                return true
+            end
 
             local depo
-            for depo, _ in pairs((entity['depos'] or {})) do
-                depo = Entities:FindByClassnameNearest(key, entity['loc'], (entity['searchRadius']['all'] or entity['searchRadius'][key]))
-                if depo then
-                    break
+            local depoOld = entity['depo'] or nil
+
+            entity.LocationRefresh()
+
+            if depoOld and depoOld['className'] then
+                depo = Entities:FindByClassnameNearest(depoOld['className'], depoOld['origin'], (entity['ai_radius']['all'] or entity['ai_radius'][depoOld['className']] or 0))
+                if not depo then
+                    depo = Entities:FindByClassnameNearest(depoOld['className'], entity['location'], (entity['ai_radius']['all'] or entity['ai_radius'][depoOld['className']] or 0))
+                end
+            else
+                for className, _ in pairs((entity['depos'] or {})) do
+                    depo = Entities:FindByClassnameNearest(className, entity['location'], (entity['ai_radius']['all'] or entity['ai_radius'][className] or 0))
+                    if depo then
+                        break
+                    end
                 end
             end
 
-            if depo then
-                entity['depo'] = depo
-                return true
-            else
-                return false
+            if depo and not depo['takingConfigured'] then
+                manager.Depo(depo)
+                if not depo['takingConfigured'] then
+                    entity['depo'] = nil
+                    return false
+                end
             end
+            entity['depo'] = depo
+            return true
         end
 
         function entity.DepoIsViable(depo)
             if entity['depos']['self'] then
                 entity['depo'] = entity
                 return true
-            elseif depo then
-                if not depo:IsNull() then
+            elseif depo and not depo:IsNull() then
+                if not depo['takingConfigured'] then
+                    manager.Depo(depo)
                     if not depo['takingConfigured'] then
-                        manager.Depo(depo)
-                        if not depo['takingConfigured'] then
-                            return false
-                        end
+                        return false
                     end
+                end
 
-                    if entity['depos'][depo['name']] then
-                        entity['depo'] = depo
-                        return true
-                    end
+                if entity['depos'][depo['entityName']] then
+                    entity['depo'] = depo
+                    return true
                 end
             end
             return false
         end
 
         function entity.PackAdd(node)
-            for resource, amount in pairs(node['value']) do
+            local total = 0
+            for resource, amount in pairs((node['value'] or {})) do
                 if entity['pack'][resource] then
                     if (entity['pack'][resource] + amount) > entity['capacity'][resource] then
                         amount = (amount + entity['pack'][resource]) - entity['capacity'][resource]
                     end
 
-                    if (entity['pack']['total'] + amount ) > entity['capacity']['total'] then
+                    if (total + amount ) > entity['capacity']['total'] then
                         amount = (amount + entity['pack']['total']) - entity['capacity']['total']
                     end
 
+                    total = total + amount
                     entity['pack'][resource] = entity['pack'][resource] + amount
-                    entity['pack']['total'] = entity['pack']['total'] + amount
 
                     for modifier, bool in pairs((entity['modifier'] or {})) do
                         entity:SetModifierStackCount(modifier, entity, amount)
@@ -221,13 +237,16 @@ function TakingManagerInitialization(manager)
         end
 
         function entity.PackCheckCapacity()
-            --#TO DO 
-                -- check total
-                -- check against individual resources
-            for resource, amount in pairs(entity['capacity']) do
-                if entity['pack'][resource] >= entity['capacity'][resource] then
+            local total = 0
+            for resource, amount in pairs((entity['pack'] or {})) do
+                if amount >= entity['capacity'][resource] then
                     return true
+                else
+                    total = total + amount
                 end
+            end
+            if entity['capacity']['total'] and total >= entity['capacity']['total'] then
+                return true
             end
             return false
         end
@@ -236,20 +255,22 @@ function TakingManagerInitialization(manager)
             local player = entity['owningPlayer'] or nil
             if player then
                 for resource, amount in pairs((entity['pack'] or {})) do
-                    if resource ~= 'total' then
-                        player[resource] = player[resource] + amount
+                    print('\n#################################################')
+                    print('\t', type(amount), 'PackDeposit', amount)
+                    player[resource] = player[resource] + amount
+                    print('\t', type(resource), 'resource in PackDeposit', resource)
+                    print('\t', type(player[resource]), 'player[resource] in PackDeposit', player[resource])
 
-                        entity.PackPopup(amount, resource)
-                        entity['pack'][resource] = 0
-                    end
+                    entity.PackPopup(resource, amount)
+                    entity['pack'][resource] = 0
+                    print('#################################################')
                 end
-                entity['pack']['total'] = 0
                 return true
             end
             return false
         end
 
-        function entity.PackPopup(amount, resource)
+        function entity.PackPopup(resource, amount)
             local color = manager['colors'][resource] or manager['colors']['default'] or Vector(255, 255, 255)
 
             local particle = ParticleManager:CreateParticleForPlayer(
@@ -304,16 +325,19 @@ function TakingManagerInitialization(manager)
                 end
             elseif type(value) == 'table' then
                 entity[key] = {}
-                for kkey, vvalue in pairs(value) do
-                    entity[key][kkey] = vvalue or nil
+                for key1, value1 in pairs(value) do
+                    entity[key][key1] = value1 or nil
                 end
             else
                 entity[key] = value
             end
         end
+        entity['node'] = entity['node'] or {}
+        entity['depo'] = entity['depo'] or {}
 
         -- Final touch(s), return entity
         entity['takingConfigured'] = true
+        manager['indexed'][entity['index']] = entity
         FireGameEventLocal('tm_taker_configured', {['index'] = entity['index']})
         return(entity)
     end
@@ -324,21 +348,30 @@ function TakingManagerInitialization(manager)
         manager NODE
     ]]--
     function manager.Node(node)
-        if not node['entityname'] then
+        local setup
+        node['className'] = node['className'] or node:GetClassname() or node:GetDebugName() or ''
+        if manager['setup'][node['className']] then
+            node['entityName'] = node['className']
+            setup = manager['setup'][node['className']] or nil
+        else
+            node['entityName'] = node['entityName'] or node:GetUnitName() or node:GetName() or ''
+            setup = manager['setup'][node['entityName']] or nil
+        end
+
+        if not setup then
             return
         end
 
-        node['classname'] = node['classname'] or node:GetClassname() or node:GetDebugName() or ''
         node['index'] = node:GetEntityIndex() or nil
         node['location'] = node:GetAbsOrigin()
 
-        local setup = manager['setup'][node['entityname']] or {}
         for key, value in pairs(setup) do
             node[key] = value or nil
         end
 
         -- Final touch(s), return node
         node['takingConfigured'] = true
+        manager['indexed'][node['index']] = node
         FireGameEventLocal('tm_node_configured', {['index'] = node['index']})
         return(node)
     end
@@ -368,7 +401,7 @@ function TakingManagerInitialization(manager)
 
         -- Final touch(s), return depo
         depo['takingConfigured'] = true
-        depo['checkOnce'] = false
+        manager['indexed'][depo['index']] = depo
         FireGameEventLocal('tm_depo_configured', {['index'] = depo['index']})
         return(depo)
     end
@@ -379,14 +412,14 @@ function TakingManagerInitialization(manager)
         Manager FUNCTIONS
     ]]--
     function manager.ToBoolean(variable)
-        variable = string.lower(tostring(variable))
+        bool = string.lower(tostring(variable))
 
         local TRUE = {['1'] = true, ['true'] = true, ['t'] = true}
         local FALSE = {['0'] = true, ['false'] = true, ['f'] = true}
 
-        if TRUE[variable] then
+        if TRUE[bool] then
             return true
-        elseif FALSE[variable] then
+        elseif FALSE[bool] then
             return false
         else
             return nil
@@ -396,65 +429,63 @@ function TakingManagerInitialization(manager)
     function manager.ToCorrectType(variable)
         local integer = tonumber(variable) or nil
         if integer then
-            return integer
+            return(integer)
         end
 
         local boolean = manager.ToBoolean(variable)
         if boolean == true or boolean == false then
-            return boolean
+            return(boolean)
         end
 
-        return tostring(variable) or nil
+        return(variable or nil)
     end
 
     function manager.StartUp()
         manager['setup'] = manager['setup'] or {}
+        manager['kv']['EntityManager'] = {}
 
-        for classname, classdata in pairs((manager['kv']['nodes'] or {})) do
-            for entityname, entitydata in pairs(classdata) do
-                manager['setup'][entityname] = {['classname'] = classname, ['entityname'] = entityname, ['name'] = entityname}
-                local setup = manager['setup'][entityname]
-
-                for key, value in pairs(entitydata) do
-                    if type(value) == 'table' then
-                        setup[key] = {}
-                        for key1, value1 in pairs(value) do
-                            setup[key][key1] = manager.ToCorrectType(value1)
-                        end
-                    else
-                        setup[key] = manager.ToCorrectType(value)
-                    end
-                end
+        -- Parse EntityManager and build a table for any entity with a taking table
+        for entityName, entityData in pairs((EntityManager['kv']['entities'] or {})) do
+            if (entityData['taking'] or entityData['Taking'] or entityData['TAKING']) and not manager['kv']['EntityManager'][entityName] then
+                manager['kv']['EntityManager'][entityName] = {
+                    [entityName] = (entityData['taking'] or entityData['Taking'] or entityData['TAKING']) or {}
+                }
             end
         end
 
-        for entityName, entityData in pairs(EntityManager['kv']['entities'] and pairs(manager['kv']['entities'])) do
-            if entityData['Taking'] or entityData['taking'] then
-                manager['setup'][entityName] = {}
-                local setup = manager['setup'][entityName]
-                for key, value in pairs((entityData['Taking'] or entityData['taking'])) do
-                    if type(value) == 'table' then
-                        setup[key] = {}
-                        for key1, value1 in pairs(value) do
-                            setup[key][key1] = manager.ToCorrectType(value1)
+        -- Parse through tables and configure manager setup
+            -- tm_nodes.kv
+            -- tm_takers.kv
+            -- EntityManager
 
-                            if key == 'nodes' and manager['setup'][value1] then
-                                setup['modifier'] = setup['modifier'] or {}
-                                for modifier, bool in pairs((manager['setup'][value1]['modifier'] or {})) do
-                                    setup['modifier'][modifier] = bool
-                                end
+        local kvTable = {
+            [0] = (manager['kv']['nodes'] or {}), 
+            [1] = (manager['kv']['takers'] or {}), 
+            [2] = (manager['kv']['EntityManager'] or {})
+        }
+        for i=0, #kvTable do
+            for className, classData in pairs(kvTable[i]) do
+                for entityName, entityData in pairs(classData) do
+                    manager['setup'][entityName] = {['className'] = className, ['entityName'] = entityName, ['name'] = entityName}
+                    local setup = manager['setup'][entityName]
+
+                    for key, value in pairs(entityData) do
+                        if type(value) == 'table' then
+                            setup[key] = {}
+                            for key1, value1 in pairs(value) do
+                                setup[key][key1] = manager.ToCorrectType(value1)
                             end
+                        else
+                            setup[key] = manager.ToCorrectType(value)
                         end
-                    else
-                        setup[key] = manager.ToCorrectType(value)
                     end
-                end
 
-                if string.lower(setup['type']) == 'taker' then
-                    setup['pack'] = {['total'] = 0}
-                    for node, bool in pairs((setup['capacity'] or {})) do
-                        if bool then
-                            setup['pack'][node] = 0
+                    if setup['capacity'] then
+                        setup['pack'] = {}
+                        for resource, amount in pairs((setup['capacity'] or {})) do
+                            if resource ~= 'total' then
+                                setup['pack'][resource] = 0
+                            end
                         end
                     end
                 end
@@ -475,12 +506,12 @@ function TakingManagerInitialization(manager)
         local entity = EntityManager['indexed'][args['index']]
         local setup = manager['setup'][entity['name']] or {}
 
-        if setup['value'] then
-            manager.Node(entity)
-        elseif (setup['type'] or '') == 'taker' then
+        if (setup['category'] or '') == 'taker' then
             manager.Taker(entity)
-        elseif (setup['type'] or '') == 'depo' then
+        elseif (setup['category'] or '') == 'depo' then
             manager.Depo(entity)
+        elseif (setup['category'] or '') == 'node' then
+            manager.Node(entity)
         end
     end
 
@@ -488,19 +519,33 @@ function TakingManagerInitialization(manager)
         if GameRules:State_Get() ~= DOTA_GAMERULES_STATE_CUSTOM_GAME_SETUP then
             return
         else
-            for classname, classdata in pairs((manager['kv']['nodes'] or {})) do
-                for entityname, entitydata in pairs(classdata) do
-                    local setup = manager['setup'][entityname] or {}
-                    if setup['configureOnStartup'] then
-                        local nodes = Entities:FindAllByClassname(classname)
-                        for i=0, #nodes+1 do
-                            local node = nodes[i] or nil
-                            if node then
-                                if classname == entityname then
-                                    manager.Node(node)
-                                elseif entityname == (node['name'] or '') then
-                                    manager.Node(node)
-                                end
+            if not manager['initialized'] then
+                return
+            end
+
+            for entityName, entityData in pairs((manager['setup'] or {})) do
+                local setup = manager['setup'][entityName] or {}
+                if setup['configureOnStartup'] then
+                    local entities
+                    if setup['className'] then
+                        entities = Entities:FindAllByClassname(setup['className'])
+                    elseif setup['entityName'] or setup['name'] then
+                        entities = Entities:FindAllByName((setup['entityName'] or setup['name']))
+                    end
+
+                    for i=0, #entities+1 do
+                        local entity = entities[i] or nil
+                        if entity then
+                            for key, value in pairs(entityData) do
+                                entity[key] = value
+                            end
+
+                            if setup['category'] == 'node' then
+                                manager.Node(entity)
+                            elseif setup['category'] == 'taker' then
+                                manager.Taker(entity)
+                            elseif  setup['category'] == 'depo' then
+                                manager.Depo(entity)
                             end
                         end
                     end
