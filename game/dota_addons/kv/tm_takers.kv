@@ -1,0 +1,80 @@
+
+//root
+    //BaseClass or Classname or 
+        //entityName
+
+"tm_takers"
+{
+    "npc_dota_hero_puck"
+    {
+        "npc_dota_hero_puck"
+        {
+            "category"                          "taker" //Default options: taker, depo, node
+            "nodes"
+            {
+                "titan_gold_mound"              true
+            }
+            "depos"
+            {
+                "self"                          true
+            }
+            "abilities"
+            {
+            "ai_takingTake"                     "harvest_lumber_base"
+                "ai_takingDeposit"              "deposit_lumber"
+            }
+            "animation"
+            {
+                "default"                       1503
+                "idle"                          1500
+                "lumber"                        1504
+            }
+            "capacity"
+            {
+                "total"                         5
+                "gold"                          5
+            }
+            "ai_radius"
+            {
+                "all"                           500 //This will override any other search radius put here. Remove to disable.
+            }
+        }
+    }
+
+    "npc_dota_creature"
+    {
+        "peasant"
+        {
+            "category"                          "taker" //Default options: taker, depo, node
+            "nodes" //Classname/Debugname of nodes that are enabled for this entity.
+            {
+                "ent_dota_tree"                 true
+            }
+            "depos" //Unitname of depos that are enabled for this entity.
+            {
+                "city_center"                   true
+            }
+            "abilities" //
+            {
+                "ai_takingTake"                 "harvest_lumber_base"
+                "ai_takingDeposit"              "deposit_lumber"
+            }
+            "animation" //Default will only be used if a specific type is missing.
+            {
+                "default"                       1503
+                "idle"                          1500
+                "lumber"                        1504
+            }
+            "capacity"
+            {
+                "total"                         5 //This is the combined total the taker can carry at once, regardless of the other capacities, before returning to the depo.
+                "lumber"                        5
+            }
+            "ai_radius"
+            {
+                "node"                          500
+                "depo"                          500
+            }
+        }
+    }
+}

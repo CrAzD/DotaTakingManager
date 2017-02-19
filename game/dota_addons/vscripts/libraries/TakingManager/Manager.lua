@@ -1,14 +1,27 @@
+--#TODO 
+    -- A depo (and slot) for each resource type and/or combination
+        -- So if a taker is allowed to take lumber and gold
+            -- allow for a depo to only receive lumber
+            -- allow for the taker to have multiple depos stored for each resource type
+                -- and able to search nearby for multiple depos of each type
+                -- and go back to the last node regardless of which the last deposit was
+            -- allow for searching for each resource type if needing to find a new node
 
 
---[[
-]]--
+--TakingManagerInitialization
+    -- manager: class passed from setup.lua 
+    -- [[class({}) for a simple empty class]]
+    -- will return manager with functions injected to TakingManager global
 function TakingManagerInitialization(manager)
-    --[[
-        manager TAKER
-    ]]--
-    function manager.Taker(entity)
-        -- Functions
+    manager['initialized'] = false
 
+
+    --
+    -- TAKER
+    function manager.Taker(entity)
+
+        -- TakingSpellStart
+            -- data: table passed from the event
         function entity.TakingSpellStart(data)
             local node = data['target']
 
@@ -39,6 +52,8 @@ function TakingManagerInitialization(manager)
             end
         end
 
+        -- TakingChannelSucceeded
+            -- data: table passed from the event
         function entity.TakingChannelSucceeded(data)
             local node = data['target']
 
@@ -73,6 +88,10 @@ function TakingManagerInitialization(manager)
             end
         end
 
+        -- NodeGetViable
+            -- Searches for a new node at two locations
+                -- 1) Around the old node's location (if old node exists)
+                -- 2) At entities current location
         function entity.NodeGetViable()
             local node
             local nodeOld = entity['node'] or nil
@@ -104,6 +123,11 @@ function TakingManagerInitialization(manager)
             return true
         end
 
+        -- NodeIsViable
+            -- Checks if the node is viable for taking
+                -- Does it still exist
+                -- Has it been configured, if not can it be configured
+                -- Is it in the entities "allowed" nodes list
         function entity.NodeIsViable(node)
             if node and not node:IsNull() then
                 if not node['takingConfigured'] then
@@ -121,6 +145,8 @@ function TakingManagerInitialization(manager)
             return false
         end
 
+        -- DepositSpellStart
+            -- data: table passed from the event
         function entity.DepositSpellStart(data)
             local depo = data['target']
 
@@ -138,6 +164,8 @@ function TakingManagerInitialization(manager)
             end
         end
 
+        -- DepositChannelSucceeded
+            -- data: table passed from the event
         function entity.DepositChannelSucceeded(data)
             local depo = data['target']
 
@@ -157,6 +185,10 @@ function TakingManagerInitialization(manager)
             end
         end
 
+        -- DepoGetViable
+            -- Searches for a new depo at two locations
+                -- 1) Around the old depo's location (if old depo exists)
+                -- 2) At entities current location
         function entity.DepoGetViable()
             if entity['depos']['self'] then
                 entity['depo'] = entity
@@ -193,6 +225,11 @@ function TakingManagerInitialization(manager)
             return true
         end
 
+        -- DepoIsViable
+            -- Checks if the depo is viable for taking
+                -- Does it still exist
+                -- Has it been configured, if not can it be configured
+                -- Is it in the entities "allowed" depo list
         function entity.DepoIsViable(depo)
             if entity['depos']['self'] then
                 entity['depo'] = entity
@@ -213,6 +250,10 @@ function TakingManagerInitialization(manager)
             return false
         end
 
+        -- PackAdd
+            -- node: node entity passed (must be a table)
+            -- Adds the values of a node to the entity
+                -- If the entity has room and is allowed to carry the resource
         function entity.PackAdd(node)
             local total = 0
             for resource, amount in pairs((node['value'] or {})) do
@@ -236,6 +277,10 @@ function TakingManagerInitialization(manager)
             return
         end
 
+        -- PackCheckCapacity
+            -- Checks if the entity's pack is full or if the limit of a resource has been reached
+                -- returns true if the limit HAS been reached
+                -- returns false if the limit has NOT been reached
         function entity.PackCheckCapacity()
             local total = 0
             for resource, amount in pairs((entity['pack'] or {})) do
@@ -251,41 +296,24 @@ function TakingManagerInitialization(manager)
             return false
         end
 
+        -- PackDeposit
+            -- Deposits the contents of the entities pack into the depo
         function entity.PackDeposit()
             local player = entity['owningPlayer'] or nil
             if player then
                 for resource, amount in pairs((entity['pack'] or {})) do
-                    print('\n#################################################')
-                    print('\t', type(amount), 'PackDeposit', amount)
                     player[resource] = player[resource] + amount
-                    print('\t', type(resource), 'resource in PackDeposit', resource)
-                    print('\t', type(player[resource]), 'player[resource] in PackDeposit', player[resource])
 
-                    entity.PackPopup(resource, amount)
+                    entity.Popup({['resource'] = resource, ['amount'] = amount})
                     entity['pack'][resource] = 0
-                    print('#################################################')
                 end
                 return true
             end
             return false
         end
 
-        function entity.PackPopup(resource, amount)
-            local color = manager['colors'][resource] or manager['colors']['default'] or Vector(255, 255, 255)
-
-            local particle = ParticleManager:CreateParticleForPlayer(
-                'particles/msg_fx/msg_damage_numbers_outgoing.vpcf',
-                PATTACH_ABSORIGIN,
-                entity['depo'] or entity,
-                entity['owningPlayer']
-            )
-
-            ParticleManager:SetParticleControl(particle, 1, Vector(0, amount, nil))
-            ParticleManager:SetParticleControl(particle, 2, Vector(4.0, (#tostring(amount)+1), 0))
-            ParticleManager:SetParticleControl(particle, 3, color)
-            return
-        end
-
+        -- AI_Idle
+            -- AI for when the entity needs to idle and/or stop what they're doing
         function entity.AI_Idle()
             entity:Stop()
             entity:SetVelocity(Vector(0, 0, 0))
@@ -295,17 +323,24 @@ function TakingManagerInitialization(manager)
             return
         end
 
+        -- AI_TakingTake
+            -- AI for when the entity needs to take
         function entity.AI_TakingTake()
             entity:CastAbilityOnTarget(entity['node'], entity['ai_takingTake'], entity['id'])
             return
         end
 
+        -- AI_TakingDeposit
+            -- AI for when the entity needs to deposit
         function entity.AI_TakingDeposit()
             entity:CastAbilityOnTarget(entity['depo'], entity['ai_takingDeposit'], entity['id'])
             return
         end
 
-        -- Configuration        
+        -- Taker configuration
+            -- Parses the setup table of itself, if it exists
+            -- Injects some tables and sets itself as configured
+            -- returns self        
         local setup = manager['setup'][entity['name']] or {}
         for key, value in pairs(setup) do
             if key == 'abilities' then
@@ -343,10 +378,8 @@ function TakingManagerInitialization(manager)
     end
 
 
-
-    --[[
-        manager NODE
-    ]]--
+    --
+    -- NODE
     function manager.Node(node)
         local setup
         node['className'] = node['className'] or node:GetClassname() or node:GetDebugName() or ''
@@ -377,10 +410,8 @@ function TakingManagerInitialization(manager)
     end
 
 
-
-    --[[
-        manager DEPO
-    ]]--
+    --
+    -- DEPO
     function manager.Depo(depo)
         local setup = manager['setup'][depo['name']] or {}
 
@@ -408,9 +439,8 @@ function TakingManagerInitialization(manager)
 
 
 
-    --[[
-        Manager FUNCTIONS
-    ]]--
+    --
+    -- MANAGER: Functions
     function manager.ToBoolean(variable)
         bool = string.lower(tostring(variable))
 
@@ -457,7 +487,6 @@ function TakingManagerInitialization(manager)
             -- tm_nodes.kv
             -- tm_takers.kv
             -- EntityManager
-
         local kvTable = {
             [0] = (manager['kv']['nodes'] or {}), 
             [1] = (manager['kv']['takers'] or {}), 
@@ -495,10 +524,8 @@ function TakingManagerInitialization(manager)
     end
 
 
-
-    --[[
-        manager EVENTS
-    ]]--
+    --
+    -- MANAGER: Events
     local function EventPlayerConfigured(args)
     end
 
@@ -559,10 +586,8 @@ function TakingManagerInitialization(manager)
     ListenToGameEvent('em_entity_configured', EventEntityConfigured, self)
 
 
-
-    --[[
-        Manager Configuraton
-    ]]--
+    --
+    -- MANAGER: Configuration
     manager['colors'] = {
         ['default'] = Vector(0, 0 ,0),
         ['lumber'] = Vector(10, 200, 90),
@@ -575,6 +600,8 @@ function TakingManagerInitialization(manager)
 end
 
 
+--
+-- Ability functions
 function TakingOnSpellStart(data)
     if data['caster']['takingConfigured'] then
         data['caster'].TakingSpellStart(data)
