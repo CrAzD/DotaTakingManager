@@ -580,20 +580,11 @@ function TakingManagerInitialization(manager)
             end
         end
     end
-
     ListenToGameEvent('game_rules_state_change', EventGameStateChange, self)
     ListenToGameEvent('em_player_configured', EventPlayerConfigured, self)
     ListenToGameEvent('em_entity_configured', EventEntityConfigured, self)
 
-
     --
-    -- MANAGER: Configuration
-    manager['colors'] = {
-        ['default'] = Vector(0, 0 ,0),
-        ['lumber'] = Vector(10, 200, 90),
-        ['gold'] = Vector(225, 225, 100)
-    }
-
     --Final touch(s), return manager
     FireGameEventLocal('tm_manager_configured', {['name'] = 'TakingManager'})
     return(manager)

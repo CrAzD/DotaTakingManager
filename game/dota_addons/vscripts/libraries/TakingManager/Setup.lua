@@ -5,10 +5,10 @@
 require('libraries/TakingManager/Manager')
 local manager = TakingManagerInitialization(class({}))
 
--- Info about the library
-manager['version'] = 0.08
+-- Information
+manager['version'] = 0.09
 manager['url'] = 'https://github.com/CrAzD/DotaTakingManager'
-manager['description'] = ''
+manager['emMinimumVersion'] = 0.64
 
 -- General setup and configuration
 manager['indexed'] = {}
@@ -21,9 +21,18 @@ manager['kv'] = {
 }
 
 -- Check if EM has been iniltialized
-    -- If so check if TM has been iniltialized
-        -- If not iniltialize
-if EntityManager and EntityManager['initialized'] and not manager['initialized'] then
+if not EntityManager or not EntityManager['initialized'] then
+	print('TakingManager: EntityManager required but missing. Please download and require before TakingManager.')
+	return
+end
+-- Check if EM's version meets the minimum required for TM
+if EntityManager['version'] < manager['emMinimumVersion'] then
+	print('TakingManager: EntityManager below minimum required verison. \n\tPlease update EntityManager to at least version '..manager['emMinimumVersion'])
+	return
+end
+-- Check if TM has been iniltialized
+    -- If not iniltialize
+if not manager['initialized'] then
     manager['setup'] = {}
     manager.StartUp()
 end
