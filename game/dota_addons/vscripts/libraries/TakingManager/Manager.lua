@@ -6,6 +6,7 @@
                 -- and able to search nearby for multiple depos of each type
                 -- and go back to the last node regardless of which the last deposit was
             -- allow for searching for each resource type if needing to find a new node
+    --  Depos can be configured to check and updated takers in a radius upon placement (and/or ability use)
 
 
 --TakingManagerInitialization
