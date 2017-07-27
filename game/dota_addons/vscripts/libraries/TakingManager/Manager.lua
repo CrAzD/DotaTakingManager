@@ -117,11 +117,11 @@ function TakingManagerInitialization(manager)
                 manager.Node(node)
                 if not node['takingConfigured'] then
                     entity['node'] = nil
-                    return(false)
+                    return false
                 end
             end
             entity['node'] = node
-            return(true)
+            return true
         end
 
         -- NodeIsViable
@@ -134,16 +134,16 @@ function TakingManagerInitialization(manager)
                 if not node['takingConfigured'] then
                     manager.Node(node)
                     if not node['takingConfigured'] then
-                        return(false)
+                        return false
                     end
                 end
 
                 if entity['nodes'][node['entityName']] then
                     entity['node'] = node
-                    return(true)
+                    return true
                 end
             end
-            return(false)
+            return false
         end
 
         -- DepositSpellStart
@@ -193,7 +193,7 @@ function TakingManagerInitialization(manager)
         function entity.DepoGetViable()
             if entity['depos']['self'] then
                 entity['depo'] = entity
-                return(true)
+                return true
             end
 
             local depo
@@ -219,11 +219,11 @@ function TakingManagerInitialization(manager)
                 manager.Depo(depo)
                 if not depo['takingConfigured'] then
                     entity['depo'] = nil
-                    return(false)
+                    return false
                 end
             end
             entity['depo'] = depo
-            return(true)
+            return true
         end
 
         -- DepoIsViable
@@ -234,21 +234,21 @@ function TakingManagerInitialization(manager)
         function entity.DepoIsViable(depo)
             if entity['depos']['self'] then
                 entity['depo'] = entity
-                return(true)
+                return true
             elseif depo and not depo:IsNull() then
                 if not depo['takingConfigured'] then
                     manager.Depo(depo)
                     if not depo['takingConfigured'] then
-                        return(false)
+                        return false
                     end
                 end
 
                 if entity['depos'][depo['entityName']] then
                     entity['depo'] = depo
-                    return(true)
+                    return true
                 end
             end
-            return(false)
+            return false
         end
 
         -- PackAdd
@@ -286,15 +286,15 @@ function TakingManagerInitialization(manager)
             local total = 0
             for resource, amount in pairs((entity['pack'] or {})) do
                 if amount >= entity['capacity'][resource] then
-                    return(true)
+                    return true
                 else
                     total = total + amount
                 end
             end
             if entity['capacity']['total'] and total >= entity['capacity']['total'] then
-                return(true)
+                return true
             end
-            return(false)
+            return false
         end
 
         -- PackDeposit
@@ -308,9 +308,9 @@ function TakingManagerInitialization(manager)
                     entity.Popup({['resource'] = resource, ['amount'] = amount})
                     entity['pack'][resource] = 0
                 end
-                return(true)
+                return true
             end
-            return(false)
+            return false
         end
 
         -- AI_Idle
@@ -449,11 +449,11 @@ function TakingManagerInitialization(manager)
         local FALSE = {['0'] = true, ['false'] = true, ['f'] = true}
 
         if TRUE[bool] then
-            return(true)
+            return true
         elseif FALSE[bool] then
-            return(false)
+            return false
         else
-            return(nil)
+            return nil
         end
     end
 
